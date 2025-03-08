@@ -62,6 +62,68 @@ If you encounter build issues related to Node.js core modules, the application h
 
 The application uses environment variables for configuration. Make sure to update the `.env` file with your OIDC provider's details before running the application.
 
+## Configuration
+
+The application uses a consolidated configuration approach:
+
+- All configuration settings have been consolidated into a single `.env` file for simplicity
+- The `config.js` file loads these environment variables and makes them available throughout the application
+- Database connection settings (if needed) are also managed through the same configuration system
+
+Example configuration:
+
+```
+REACT_APP_OIDC_AUTHORITY=https://your-oidc-provider.com
+REACT_APP_OIDC_CLIENT_ID=your-client-id
+REACT_APP_OIDC_REDIRECT_URI=http://localhost:3000/callback
+REACT_APP_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
+REACT_APP_OIDC_SCOPE="openid profile email"
+REACT_APP_LOG_LEVEL=info
+```
+
+## Technology Stack
+
+- **Frontend**: React.js with Carbon Design System components
+- **Authentication**: OpenID Connect (OIDC) via oidc-client-ts
+- **Styling**: SCSS with Carbon Design System
+- **Build Tool**: Webpack
+- **Package Manager**: npm
+
+## Deployment
+
+### Local Development
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/rbaronia/oidc-token-viewer.git
+   cd oidc-token-viewer
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file with your configuration settings
+  
+4. Start the development server:
+   ```bash
+   npm start
+   ```
+
+### Production Deployment
+
+1. Build the application:
+   ```bash
+   npm run build
+   ```
+
+2. The built application will be in the `build/` directory, which can be deployed to any static file hosting service, such as:
+   - GitHub Pages
+   - Netlify
+   - AWS S3 + CloudFront
+   - Azure Static Web Apps
+
 ## How to Acquire and View Tokens
 
 The OIDC Token Viewer application automatically handles token acquisition through the OpenID Connect authentication flow:
