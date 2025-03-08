@@ -1,13 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Stack, CodeSnippet, Loading } from '@carbon/react';
+import { Button, Stack, CodeSnippet, Loading, TextInput, Form, FormGroup, Checkbox, Dropdown } from '@carbon/react';
 import { UserManager, Log } from 'oidc-client-ts';
-import logger from '../utils/logger';
 
 // Direct implementation of login without using the service
 function DebugLogin() {
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Runtime editable configuration
+  const [config, setConfig] = useState({
+    authority: process.env.REACT_APP_OIDC_AUTHORITY || '',
+    client_id: process.env.REACT_APP_OIDC_CLIENT_ID || '',
+    redirect_uri: process.env.REACT_APP_OIDC_REDIRECT_URI || window.location.origin + '/callback',
+    response_type: 'code',
+    scope: process.env.REACT_APP_OIDC_SCOPE || 'openid profile email',
+    client_secret: '',
+    post_logout_redirect_uri: process.env.REACT_APP_OIDC_POST_LOGOUT_REDIRECT_URI || window.location.origin,
+    loadUserInfo: true,
+    automaticSilentRenew: true,
+  });
+  
+  // Response type options
+  const responseTypeOptions = [
+    { id: 'code', text: 'Authorization Code (code)' },
+    { id: 'id_token', text: 'Implicit - ID Token (id_token)' },
+    { id: 'id_token token', text: 'Implicit - ID Token + Access Token (id_token token)' },
+    { id: 'code id_token', text: 'Hybrid - Auth Code + ID Token (code id_token)' },
+    { id: 'code token', text: 'Hybrid - Auth Code + Access Token (code token)' },
+    { id: 'code id_token token', text: 'Hybrid - Auth Code + ID Token + Access Token (code id_token token)' }
+  ];
 
   // Add to log with timestamp
   const addLog = (message) => {
@@ -22,30 +44,88 @@ function DebugLogin() {
     Log.setLevel(Log.DEBUG);
     
     addLog('DebugLogin component mounted');
-    addLog(`Auth Authority: ${process.env.REACT_APP_OIDC_AUTHORITY}`);
-    addLog(`Client ID: ${process.env.REACT_APP_OIDC_CLIENT_ID}`);
-    addLog(`Redirect URI: ${process.env.REACT_APP_OIDC_REDIRECT_URI}`);
+    addLog(`Default Auth Authority: ${process.env.REACT_APP_OIDC_AUTHORITY}`);
+    addLog(`Default Client ID: ${process.env.REACT_APP_OIDC_CLIENT_ID}`);
+    addLog(`Default Redirect URI: ${process.env.REACT_APP_OIDC_REDIRECT_URI}`);
+    
+    // Check if we have previously saved config in sessionStorage
+    const savedConfig = sessionStorage.getItem('oidc_debug_config');
+    if (savedConfig) {
+      try {
+        const parsedConfig = JSON.parse(savedConfig);
+        setConfig(parsedConfig);
+        addLog('Loaded saved configuration from session storage');
+      } catch (err) {
+        addLog(`Error loading saved configuration: ${err.message}`);
+      }
+    }
   }, []);
   
-  const handleDirectLogin = async () => {
+  const handleConfigChange = (field, value) => {
+    setConfig(prev => {
+      const newConfig = { ...prev, [field]: value };
+      // Save to session storage for persistence
+      sessionStorage.setItem('oidc_debug_config', JSON.stringify(newConfig));
+      return newConfig;
+    });
+  };
+  
+  const handleCheckboxChange = (field) => {
+    setConfig(prev => {
+      const newConfig = { ...prev, [field]: !prev[field] };
+      sessionStorage.setItem('oidc_debug_config', JSON.stringify(newConfig));
+      return newConfig;
+    });
+  };
+  
+  const handleResponseTypeChange = (event) => {
+    const selectedType = event.selectedItem.id;
+    handleConfigChange('response_type', selectedType);
+  };
+  
+  const resetToDefaults = () => {
+    setConfig({
+      authority: process.env.REACT_APP_OIDC_AUTHORITY || '',
+      client_id: process.env.REACT_APP_OIDC_CLIENT_ID || '',
+      redirect_uri: process.env.REACT_APP_OIDC_REDIRECT_URI || window.location.origin + '/callback',
+      response_type: 'code',
+      scope: process.env.REACT_APP_OIDC_SCOPE || 'openid profile email',
+      client_secret: '',
+      post_logout_redirect_uri: process.env.REACT_APP_OIDC_POST_LOGOUT_REDIRECT_URI || window.location.origin,
+      loadUserInfo: true,
+      automaticSilentRenew: true,
+    });
+    sessionStorage.removeItem('oidc_debug_config');
+    addLog('Reset configuration to environment defaults');
+  };
+  
+  const handleLogin = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      addLog('Creating UserManager directly...');
+      addLog('Creating UserManager with custom configuration...');
       
-      const config = {
-        authority: process.env.REACT_APP_OIDC_AUTHORITY,
-        client_id: process.env.REACT_APP_OIDC_CLIENT_ID,
-        redirect_uri: process.env.REACT_APP_OIDC_REDIRECT_URI,
-        response_type: 'code',
-        scope: process.env.REACT_APP_OIDC_SCOPE || 'openid profile email',
-        loadUserInfo: true,
+      // Create a clean config object for UserManager
+      const userManagerConfig = {
+        authority: config.authority,
+        client_id: config.client_id,
+        redirect_uri: config.redirect_uri,
+        response_type: config.response_type,
+        scope: config.scope,
+        post_logout_redirect_uri: config.post_logout_redirect_uri,
+        loadUserInfo: config.loadUserInfo,
+        automaticSilentRenew: config.automaticSilentRenew,
       };
       
-      addLog(`Using config: ${JSON.stringify(config, null, 2)}`);
+      // Only add client_secret if it's provided
+      if (config.client_secret) {
+        userManagerConfig.client_secret = config.client_secret;
+      }
       
-      const userManager = new UserManager(config);
+      addLog(`Using config: ${JSON.stringify(userManagerConfig, null, 2)}`);
+      
+      const userManager = new UserManager(userManagerConfig);
       
       addLog('Calling signinRedirect()...');
       await userManager.signinRedirect();
@@ -60,46 +140,16 @@ function DebugLogin() {
     }
   };
 
-  const handleHardcodedLogin = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      addLog('Creating UserManager with hardcoded values...');
-      
-      // Hardcoded config for testing
-      const config = {
-        authority: 'https://www.iamlab.ibm.com/mga/sps/oauth/oauth20',
-        client_id: 'MMPdQGPKDwowawJ1MkSa',
-        redirect_uri: 'http://localhost:3000/callback',
-        response_type: 'code',
-        scope: 'openid profile email',
-        loadUserInfo: true,
-      };
-      
-      addLog(`Using hardcoded config: ${JSON.stringify(config, null, 2)}`);
-      
-      const userManager = new UserManager(config);
-      
-      addLog('Calling signinRedirect with hardcoded values...');
-      await userManager.signinRedirect();
-      
-      addLog('Hardcoded signinRedirect called successfully');
-    } catch (err) {
-      const errorMessage = `Hardcoded login error: ${err.message}`;
-      addLog(errorMessage);
-      addLog(`Full error: ${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}`);
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
-
   const testProviderConnectivity = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const authority = process.env.REACT_APP_OIDC_AUTHORITY || 'https://www.iamlab.ibm.com/mga/sps/oauth/oauth20';
+      const authority = config.authority;
+      
+      if (!authority) {
+        throw new Error('Authority URL is required');
+      }
       
       addLog(`Testing connectivity to OIDC provider: ${authority}`);
       
@@ -133,28 +183,112 @@ function DebugLogin() {
 
   return (
     <div style={{ padding: '2rem' }}>
-      <h1>OIDC Debug Login</h1>
+      <h1>OIDC Configuration Editor & Debug Login</h1>
       
       <Stack gap={5}>
-        <div>
-          <h3>Environment Variables:</h3>
-          <ul>
-            <li>REACT_APP_OIDC_AUTHORITY: {process.env.REACT_APP_OIDC_AUTHORITY || 'Not set'}</li>
-            <li>REACT_APP_OIDC_CLIENT_ID: {process.env.REACT_APP_OIDC_CLIENT_ID || 'Not set'}</li>
-            <li>REACT_APP_OIDC_REDIRECT_URI: {process.env.REACT_APP_OIDC_REDIRECT_URI || 'Not set'}</li>
-            <li>REACT_APP_OIDC_SCOPE: {process.env.REACT_APP_OIDC_SCOPE || 'Not set'}</li>
-          </ul>
-        </div>
+        <Form>
+          <h3>OIDC Configuration Parameters:</h3>
+          <p className="helper-text">Edit these parameters to test with any OAuth server at runtime without modifying .env files</p>
+          
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+            <FormGroup legendText="Provider Settings">
+              <TextInput 
+                id="authority" 
+                labelText="Authority URL" 
+                value={config.authority} 
+                onChange={(e) => handleConfigChange('authority', e.target.value)}
+                placeholder="https://your-oauth-server.com"
+                helperText="The base URL of your OAuth/OIDC provider"
+              />
+              
+              <TextInput 
+                id="client_id" 
+                labelText="Client ID" 
+                value={config.client_id} 
+                onChange={(e) => handleConfigChange('client_id', e.target.value)}
+                placeholder="your-client-id"
+              />
+              
+              <TextInput 
+                id="client_secret" 
+                labelText="Client Secret (optional)" 
+                value={config.client_secret} 
+                onChange={(e) => handleConfigChange('client_secret', e.target.value)}
+                placeholder="your-client-secret"
+                type="password"
+                helperText="Only needed for confidential clients"
+              />
+            </FormGroup>
+            
+            <FormGroup legendText="Redirect Settings">
+              <TextInput 
+                id="redirect_uri" 
+                labelText="Redirect URI" 
+                value={config.redirect_uri} 
+                onChange={(e) => handleConfigChange('redirect_uri', e.target.value)}
+                placeholder="http://localhost:3000/callback"
+              />
+              
+              <TextInput 
+                id="post_logout_redirect_uri" 
+                labelText="Post Logout Redirect URI" 
+                value={config.post_logout_redirect_uri} 
+                onChange={(e) => handleConfigChange('post_logout_redirect_uri', e.target.value)}
+                placeholder="http://localhost:3000"
+              />
+            </FormGroup>
+          </div>
+          
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginTop: '1rem' }}>
+            <FormGroup legendText="Protocol Settings">
+              <Dropdown 
+                id="response_type"
+                titleText="Response Type"
+                label="Select a response type"
+                items={responseTypeOptions}
+                selectedItem={responseTypeOptions.find(item => item.id === config.response_type)}
+                onChange={handleResponseTypeChange}
+                itemToString={(item) => (item ? item.text : '')}
+              />
+              
+              <TextInput 
+                id="scope" 
+                labelText="Scope" 
+                value={config.scope} 
+                onChange={(e) => handleConfigChange('scope', e.target.value)}
+                placeholder="openid profile email"
+              />
+            </FormGroup>
+            
+            <FormGroup legendText="Additional Options">
+              <Checkbox 
+                id="loadUserInfo" 
+                labelText="Load User Info" 
+                checked={config.loadUserInfo}
+                onChange={() => handleCheckboxChange('loadUserInfo')}
+              />
+              
+              <Checkbox 
+                id="automaticSilentRenew" 
+                labelText="Automatic Silent Renew" 
+                checked={config.automaticSilentRenew}
+                onChange={() => handleCheckboxChange('automaticSilentRenew')}
+              />
+            </FormGroup>
+          </div>
+          
+          <div style={{ marginTop: '1rem' }}>
+            <Button onClick={resetToDefaults} kind="ghost">
+              Reset to Default Values
+            </Button>
+          </div>
+        </Form>
         
         <div>
-          <h3>Test Login</h3>
+          <h3>Test OIDC Configuration</h3>
           <Stack orientation="horizontal" gap={2}>
-            <Button onClick={handleDirectLogin} disabled={loading}>
-              Login with Env Variables
-            </Button>
-            
-            <Button onClick={handleHardcodedLogin} disabled={loading} kind="secondary">
-              Login with Hardcoded Values
+            <Button onClick={handleLogin} disabled={loading}>
+              Login with Custom Configuration
             </Button>
             
             <Button onClick={testProviderConnectivity} disabled={loading} kind="tertiary">
@@ -162,7 +296,7 @@ function DebugLogin() {
             </Button>
           </Stack>
           
-          {loading && <Loading description="Attempting login..." />}
+          {loading && <Loading description="Processing..." />}
           {error && <div style={{ color: 'red', marginTop: '1rem' }}>{error}</div>}
         </div>
         
