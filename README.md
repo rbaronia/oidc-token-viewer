@@ -123,6 +123,86 @@ REACT_APP_LOG_LEVEL=info
    - Netlify
    - AWS S3 + CloudFront
    - Azure Static Web Apps
+   - Glitch
+
+### Deploying on Glitch
+
+Glitch provides a simple way to host and deploy web applications. Follow these steps to deploy the OIDC Token Viewer on Glitch:
+
+1. **Create a Glitch account**:
+   - Go to [Glitch.com](https://glitch.com/) and sign up or log in
+   
+2. **Create a new project on Glitch**:
+   - Click "New Project" and choose "Import from GitHub"
+   - Enter your GitHub repository URL: `https://github.com/rbaronia/oidc-token-viewer.git`
+   
+3. **Configure environment variables**:
+   - In your Glitch project, click on "Tools" in the bottom-left corner
+   - Select ".env" from the dropdown menu
+   - Add your configuration values as they appear in your local `.env` file:
+     ```
+     REACT_APP_OIDC_AUTHORITY=https://your-oidc-provider.com
+     REACT_APP_OIDC_CLIENT_ID=your-client-id
+     REACT_APP_OIDC_REDIRECT_URI=https://your-glitch-app-name.glitch.me/callback
+     REACT_APP_OIDC_POST_LOGOUT_REDIRECT_URI=https://your-glitch-app-name.glitch.me
+     REACT_APP_OIDC_SCOPE="openid profile email"
+     REACT_APP_LOG_LEVEL=info
+     ```
+   - **Important**: Make sure to update the redirect URIs to match your Glitch app URL
+
+4. **Modify package.json** (if needed):
+   - Glitch uses the "start" script to run your application
+   - Ensure your `package.json` includes a proper start script:
+     ```json
+     "scripts": {
+       "start": "node server.js",
+       "build": "webpack --mode production",
+       ...
+     }
+     ```
+   - If you don't have a server.js file, create one with a simple Express server to serve the build directory:
+     ```javascript
+     // server.js
+     const express = require('express');
+     const path = require('path');
+     const app = express();
+     
+     // Serve static files from the 'build' directory
+     app.use(express.static(path.join(__dirname, 'build')));
+     
+     // For any request that doesn't match a static file, serve index.html
+     app.get('*', (req, res) => {
+       res.sendFile(path.join(__dirname, 'build', 'index.html'));
+     });
+     
+     const PORT = process.env.PORT || 3000;
+     app.listen(PORT, () => {
+       console.log(`Server is running on port ${PORT}`);
+     });
+     ```
+
+5. **Install dependencies and build**:
+   - In the Glitch console (Tools > Terminal), run:
+     ```bash
+     npm install
+     npm run build
+     ```
+
+6. **Update OIDC Provider settings**:
+   - Log in to your OIDC provider's dashboard
+   - Add your Glitch app URL as an authorized redirect URI:
+     - `https://your-glitch-app-name.glitch.me/callback`
+   - Add your Glitch app URL as an allowed origin:
+     - `https://your-glitch-app-name.glitch.me`
+
+7. **Access your deployed application**:
+   - Your app is now live at `https://your-glitch-app-name.glitch.me`
+   - Click "Show" in the Glitch UI to open your application
+
+8. **Troubleshooting**:
+   - If your application doesn't load properly, check the Glitch logs (Tools > Logs)
+   - Verify that all environment variables are set correctly
+   - Ensure that your OIDC provider allows your Glitch domain as a valid redirect URI
 
 ## How to Acquire and View Tokens
 
