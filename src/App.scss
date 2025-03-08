@@ -1,0 +1,21 @@
+@use '@carbon/react';
+@use '@carbon/styles';
+
+.token-viewer {
+  padding: 2rem;
+
+  &__header {
+    margin-bottom: 2rem;
+  }
+
+  &__table {
+    margin-bottom: 2rem;
+  }
+
+  &__raw {
+    background-color: #262626;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+  }
+}
