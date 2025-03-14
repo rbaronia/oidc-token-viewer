@@ -1,5 +1,15 @@
 // config-overrides.js
+const webpack = require('webpack');
+
 module.exports = function override(config, env) {
+  // Add environment variables for build time
+  config.plugins.push(
+    new webpack.DefinePlugin({
+      'process.env.BUILD_TIME': 'true',
+      'process.env.REACT_APP_DISABLE_OIDC': JSON.stringify('true')
+    })
+  );
+
   // Find the sass-loader rule
   const oneOfRule = config.module.rules.find(rule => rule.oneOf);
   if (oneOfRule) {
@@ -52,6 +62,32 @@ module.exports = function override(config, env) {
       }
     }
   }
+
+  // Optimize chunks and minimize
+  config.optimization = {
+    ...config.optimization,
+    minimize: true,
+    splitChunks: {
+      chunks: 'all',
+      minSize: 20000,
+      maxSize: 244000,
+      minChunks: 1,
+      maxAsyncRequests: 30,
+      maxInitialRequests: 30,
+      cacheGroups: {
+        defaultVendors: {
+          test: /[\\/]node_modules[\\/]/,
+          priority: -10,
+          reuseExistingChunk: true,
+        },
+        default: {
+          minChunks: 2,
+          priority: -20,
+          reuseExistingChunk: true,
+        },
+      },
+    },
+  };
 
   return config;
 };

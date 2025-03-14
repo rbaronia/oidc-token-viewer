@@ -3,6 +3,12 @@ import logger from '../utils/logger';
 
 // Read configuration from environment
 const getConfig = () => {
+  // During build time or when OIDC is disabled, return null
+  if (process.env.BUILD_TIME || process.env.REACT_APP_DISABLE_OIDC === 'true') {
+    logger.debug('OIDC disabled during build or by configuration');
+    return null;
+  }
+
   const config = {
     authority: process.env.REACT_APP_OIDC_AUTHORITY,
     client_id: process.env.REACT_APP_OIDC_CLIENT_ID,
@@ -36,15 +42,24 @@ const getConfig = () => {
 
 class AuthService {
   userManager;
+  initialized = false;
 
   constructor() {
     try {
       const config = getConfig();
+      
+      // If OIDC is disabled or we're in build time, don't initialize
+      if (!config) {
+        logger.debug('AuthService initialization skipped - OIDC disabled');
+        return;
+      }
+
       logger.info('Initializing AuthService with config:', {
         ...config,
         client_id: '***REDACTED***',
         authority: '***REDACTED***'
       });
+
       this.userManager = new UserManager(config);
       
       // Add event listeners for debugging
@@ -63,6 +78,7 @@ class AuthService {
         this.userManager.clearStaleState();
       });
       
+      this.initialized = true;
       logger.info('AuthService initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize AuthService:', error);
@@ -71,6 +87,11 @@ class AuthService {
   }
 
   async login() {
+    if (!this.initialized) {
+      logger.warn('Login attempted but AuthService is not initialized');
+      return;
+    }
+
     try {
       logger.info('Initiating login...');
       await this.userManager.signinRedirect();
@@ -81,6 +102,11 @@ class AuthService {
   }
 
   async handleLoginCallback() {
+    if (!this.initialized) {
+      logger.warn('Login callback attempted but AuthService is not initialized');
+      return null;
+    }
+
     try {
       logger.info('Processing login callback...');
       const user = await this.userManager.signinRedirectCallback();
@@ -93,6 +119,11 @@ class AuthService {
   }
 
   async logout() {
+    if (!this.initialized) {
+      logger.warn('Logout attempted but AuthService is not initialized');
+      return;
+    }
+
     try {
       logger.info('Initiating logout...');
       await this.userManager.signoutRedirect();
@@ -103,6 +134,11 @@ class AuthService {
   }
 
   async getUser() {
+    if (!this.initialized) {
+      logger.debug('Get user attempted but AuthService is not initialized');
+      return null;
+    }
+
     try {
       const user = await this.userManager.getUser();
       if (!user) {
