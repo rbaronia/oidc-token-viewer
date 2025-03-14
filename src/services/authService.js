@@ -10,12 +10,15 @@ const getConfig = () => {
     post_logout_redirect_uri: process.env.REACT_APP_OIDC_POST_LOGOUT_REDIRECT_URI,
     scope: process.env.REACT_APP_OIDC_SCOPE,
     response_type: 'code',
-    // Additional settings that help with debugging
+    // Glitch-specific settings
     loadUserInfo: true,
-    automaticSilentRenew: false, // Disable automatic renewal to prevent connection errors
-    monitorSession: false, // Disable session monitoring to prevent connection errors
+    automaticSilentRenew: false, // Disable automatic renewal
+    monitorSession: false, // Disable session monitoring
     filterProtocolClaims: true,
-    silentRequestTimeout: 10000, // 10 seconds timeout for silent requests
+    silentRequestTimeout: 1000, // Reduce timeout to 1 second since we're not using silent renewal
+    clockSkewInSeconds: 300, // 5 minutes clock skew allowance
+    staleStateAgeInSeconds: 3600, // 1 hour
+    userStore: null, // Don't use web storage for tokens in Glitch
   };
 
   // Basic validation
@@ -39,22 +42,25 @@ class AuthService {
       const config = getConfig();
       logger.info('Initializing AuthService with config:', {
         ...config,
-        client_id: '***REDACTED***' // Don't log sensitive information
+        client_id: '***REDACTED***',
+        authority: '***REDACTED***'
       });
       this.userManager = new UserManager(config);
       
       // Add event listeners for debugging
-      this.userManager.events.addUserLoaded(() => {
+      this.userManager.events.addUserLoaded((user) => {
         logger.info('User loaded successfully');
       });
       
       this.userManager.events.addSilentRenewError((error) => {
-        logger.warn('Silent renew error - this is expected in some cases:', error);
-        // Don't throw error for silent renewal failures
+        // Just log silently and don't propagate the error since we're not using silent renewal
+        logger.debug('Silent renew error (expected):', error);
       });
       
       this.userManager.events.addUserSignedOut(() => {
         logger.info('User signed out');
+        // Clear any cached user data
+        this.userManager.clearStaleState();
       });
       
       logger.info('AuthService initialized successfully');
@@ -98,10 +104,15 @@ class AuthService {
 
   async getUser() {
     try {
-      return await this.userManager.getUser();
+      const user = await this.userManager.getUser();
+      if (!user) {
+        logger.debug('No user found in session');
+        return null;
+      }
+      return user;
     } catch (error) {
       logger.error('Get user failed:', error);
-      throw error;
+      return null; // Return null instead of throwing to handle errors gracefully
     }
   }
 }
