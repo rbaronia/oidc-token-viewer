@@ -7,6 +7,7 @@
     "@carbon/styles": "^1.33.0",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
+    "compression": "^1.7.4",
     "express": "^4.18.2",
     "https-browserify": "^1.0.0",
     "oidc-client-ts": "^2.4.0",
@@ -23,9 +24,9 @@
     "util": "^0.12.5"
   },
   "scripts": {
-    "start": "NODE_OPTIONS='--no-warnings --no-deprecation' NODE_ENV=production npm run build && node server.js",
+    "start": "NODE_OPTIONS='--no-warnings --no-deprecation --max-old-space-size=384' NODE_ENV=production npm run build && node --max-old-space-size=384 server.js",
     "dev": "react-app-rewired start",
-    "build": "NODE_OPTIONS='--no-warnings --no-deprecation' CI=false SASS_NO_SOURCE_MAP=true react-app-rewired build",
+    "build": "NODE_OPTIONS='--no-warnings --no-deprecation --max-old-space-size=384' CI=false GENERATE_SOURCEMAP=false SASS_NO_SOURCE_MAP=true react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
@@ -48,7 +49,7 @@
     ]
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": "14.x"
   },
   "devDependencies": {
     "react-app-rewired": "^2.2.1",
