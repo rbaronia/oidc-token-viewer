@@ -12,9 +12,10 @@ const getConfig = () => {
     response_type: 'code',
     // Additional settings that help with debugging
     loadUserInfo: true,
-    automaticSilentRenew: true,
-    monitorSession: true,
+    automaticSilentRenew: false, // Disable automatic renewal to prevent connection errors
+    monitorSession: false, // Disable session monitoring to prevent connection errors
     filterProtocolClaims: true,
+    silentRequestTimeout: 10000, // 10 seconds timeout for silent requests
   };
 
   // Basic validation
@@ -36,7 +37,10 @@ class AuthService {
   constructor() {
     try {
       const config = getConfig();
-      logger.info('Initializing AuthService with config:', config);
+      logger.info('Initializing AuthService with config:', {
+        ...config,
+        client_id: '***REDACTED***' // Don't log sensitive information
+      });
       this.userManager = new UserManager(config);
       
       // Add event listeners for debugging
@@ -45,7 +49,8 @@ class AuthService {
       });
       
       this.userManager.events.addSilentRenewError((error) => {
-        logger.error('Silent renew error:', error);
+        logger.warn('Silent renew error - this is expected in some cases:', error);
+        // Don't throw error for silent renewal failures
       });
       
       this.userManager.events.addUserSignedOut(() => {
@@ -62,7 +67,6 @@ class AuthService {
   async login() {
     try {
       logger.info('Initiating login...');
-      logger.info('Using redirect URI:', process.env.REACT_APP_OIDC_REDIRECT_URI);
       await this.userManager.signinRedirect();
     } catch (error) {
       logger.error('Login failed:', error);

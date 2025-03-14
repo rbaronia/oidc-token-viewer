@@ -31,26 +31,6 @@ A modern single-page application built with React and Carbon Design System that 
    npm start
    ```
 
-## Important Note
-
-Ensure the `src/index.js` file is present as it is required for the application to start. This file serves as the entry point for the React application and is responsible for rendering the main `App` component into the DOM.
-
-## Browser Compatibility
-
-The application is designed to run in modern browsers and uses a browser-compatible logging implementation instead of Node.js-specific libraries. This ensures that you won't encounter polyfill-related errors during development or production builds.
-
-## Development Notes
-
-- The application uses a custom browser-compatible logger implementation instead of Winston to avoid Node.js core module dependencies.
-- Essential files that must be present:
-  - `src/index.js`: Entry point for the React application
-  - `src/index.css`: Basic styles for the application
-  - `public/index.html`: HTML template for the SPA
-
-## Troubleshooting
-
-If you encounter build issues related to Node.js core modules, the application has been configured to avoid these dependencies. If you need server-side logging, consider implementing a separate logging service rather than trying to use Node.js libraries in the browser environment.
-
 ## Architecture
 
 - React for UI components
@@ -58,17 +38,8 @@ If you encounter build issues related to Node.js core modules, the application h
 - oidc-client-ts for OIDC authentication
 - React Router for navigation
 
-## Development
-
-The application uses environment variables for configuration. Make sure to update the `.env` file with your OIDC provider's details before running the application.
 
 ## Configuration
-
-The application uses a consolidated configuration approach:
-
-- All configuration settings have been consolidated into a single `.env` file for simplicity
-- The `config.js` file loads these environment variables and makes them available throughout the application
-- Database connection settings (if needed) are also managed through the same configuration system
 
 Example configuration:
 
@@ -81,13 +52,6 @@ REACT_APP_OIDC_SCOPE="openid profile email"
 REACT_APP_LOG_LEVEL=info
 ```
 
-## Technology Stack
-
-- **Frontend**: React.js with Carbon Design System components
-- **Authentication**: OpenID Connect (OIDC) via oidc-client-ts
-- **Styling**: SCSS with Carbon Design System
-- **Build Tool**: Webpack
-- **Package Manager**: npm
 
 ## Deployment
 
